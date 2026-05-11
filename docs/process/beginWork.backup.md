@@ -2,11 +2,7 @@
 
 ## 方法概览
 
-可以从[源码这里](https://github.com/facebook/react/blob/main/packages/react-reconciler/src/ReactFiberBeginWork.js)看到`beginWork`的定义。
-
-::: warning 注意
-本文主线仍然沿用`beginWork`的核心流程讲解。随着`Suspense`、`Offscreen`、`Cache`、`Activity`、`ViewTransition`等能力加入，当前 React 源码中的`beginWork`分支比早期版本更多，但主干逻辑仍然是“处理当前`Fiber节点`，生成或复用子`Fiber节点`”。
-:::
+可以从[源码这里](https://github.com/facebook/react/blob/1fb18e22ae66fdb1dc127347e169e73948778e5a/packages/react-reconciler/src/ReactFiberBeginWork.new.js#L3075)看到`beginWork`的定义。整个方法大概有 500 行代码。
 
 从上一节我们已经知道，`beginWork`的工作是传入`当前Fiber节点`，创建`子Fiber节点`，我们从传参来看看具体是如何做的。
 
@@ -79,13 +75,10 @@ function beginWork(
 
 ## update 时
 
-我们可以看到，当`props`、`context`、开发环境热更新下的`type`等没有变化，且当前`Fiber节点`没有本次`renderLanes`需要处理的`update`或`context`变化时，`didReceiveUpdate === false`。在不处于错误或`Suspense`捕获后的二次渲染路径时，就可能进入复用前一次更新的`子Fiber`的优化路径。
-
-可以将其概括为：
+我们可以看到，满足如下情况时`didReceiveUpdate === false`（即可以直接复用前一次更新的`子Fiber`，不需要新建`子Fiber`）
 
 1. `oldProps === newProps && workInProgress.type === current.type`，即`props`与`fiber.type`不变
-2. 当前`Fiber节点`没有与本次`renderLanes`匹配的`update`或`context`变化，会在讲解`Scheduler`时介绍
-3. 没有处于`DidCapture`等需要重新进入渲染的特殊路径
+2. `!includesSomeLane(renderLanes, updateLanes)`，即当前`Fiber节点`优先级不够，会在讲解`Scheduler`时介绍
 
 ```js
 if (current !== null) {
@@ -98,10 +91,7 @@ if (current !== null) {
     (__DEV__ ? workInProgress.type !== current.type : false)
   ) {
     didReceiveUpdate = true;
-  } else if (
-    !checkScheduledUpdateOrContext(current, renderLanes) &&
-    (workInProgress.flags & DidCapture) === NoFlags
-  ) {
+  } else if (!includesSomeLane(renderLanes, updateLanes)) {
     didReceiveUpdate = false;
     switch (
       workInProgress.tag
@@ -123,7 +113,7 @@ if (current !== null) {
 
 我们可以看到，根据`fiber.tag`不同，进入不同类型`Fiber`的创建逻辑。
 
-> 可以从[这里](https://github.com/facebook/react/blob/main/packages/react-reconciler/src/ReactWorkTags.js)看到`tag`对应的组件类型
+> 可以从[这里](https://github.com/facebook/react/blob/1fb18e22ae66fdb1dc127347e169e73948778e5a/packages/react-reconciler/src/ReactWorkTags.js)看到`tag`对应的组件类型
 
 ```js
 // mount时：根据tag不同，创建不同的Fiber节点
@@ -146,7 +136,7 @@ switch (workInProgress.tag) {
 }
 ```
 
-对于我们常见的组件类型，如（`FunctionComponent`/`ClassComponent`/`HostComponent`），最终会进入[reconcileChildren](https://github.com/facebook/react/blob/main/packages/react-reconciler/src/ReactFiberBeginWork.js)方法。
+对于我们常见的组件类型，如（`FunctionComponent`/`ClassComponent`/`HostComponent`），最终会进入[reconcileChildren](https://github.com/facebook/react/blob/1fb18e22ae66fdb1dc127347e169e73948778e5a/packages/react-reconciler/src/ReactFiberBeginWork.new.js#L233)方法。
 
 ## reconcileChildren
 
@@ -185,55 +175,55 @@ export function reconcileChildren(
 
 从代码可以看出，和`beginWork`一样，他也是通过`current === null ?`区分`mount`与`update`。
 
-不论走哪个逻辑，最终他会生成新的子`Fiber节点`并赋值给`workInProgress.child`，作为本次`beginWork`返回值，并作为下次`performUnitOfWork`执行时`workInProgress`的传参。
+不论走哪个逻辑，最终他会生成新的子`Fiber节点`并赋值给`workInProgress.child`，作为本次`beginWork`[返回值](https://github.com/facebook/react/blob/1fb18e22ae66fdb1dc127347e169e73948778e5a/packages/react-reconciler/src/ReactFiberBeginWork.new.js#L1158)，并作为下次`performUnitOfWork`执行时`workInProgress`的[传参](https://github.com/facebook/react/blob/1fb18e22ae66fdb1dc127347e169e73948778e5a/packages/react-reconciler/src/ReactFiberWorkLoop.new.js#L1702)。
 
 ::: warning 注意
-值得一提的是，`mountChildFibers`与`reconcileChildFibers`这两个方法的逻辑基本一致。核心区别是：`reconcileChildFibers`会追踪用于`commit阶段`的副作用，必要时为生成的`Fiber节点`设置`flags`或记录`deletions`；`mountChildFibers`通常不追踪插入、删除、移动等副作用。
+值得一提的是，`mountChildFibers`与`reconcileChildFibers`这两个方法的逻辑基本一致。唯一的区别是：`reconcileChildFibers`会为生成的`Fiber节点`带上`effectTag`属性，而`mountChildFibers`不会。
 :::
 
-<a id="effecttag"></a>
+## effectTag
 
-## flags
+我们知道，`render阶段`的工作是在内存中进行，当工作结束后会通知`Renderer`需要执行的`DOM`操作。要执行`DOM`操作的具体类型就保存在`fiber.effectTag`中。
 
-我们知道，`render阶段`的工作是在内存中进行，当工作结束后会通知`Renderer`需要执行的`DOM`操作。要执行`DOM`操作的具体类型就保存在`fiber.flags`中。
-
-> 你可以从[这里](https://github.com/facebook/react/blob/main/packages/react-reconciler/src/ReactFiberFlags.js)看到`flags`对应的`DOM`操作
+> 你可以从[这里](https://github.com/facebook/react/blob/1fb18e22ae66fdb1dc127347e169e73948778e5a/packages/react-reconciler/src/ReactSideEffectTags.js)看到`effectTag`对应的`DOM`操作
 
 比如：
 
 ```js
 // DOM需要插入到页面中
-export const Placement = /* */ 0b0000000000000000000000000000010;
+export const Placement = /*                */ 0b00000000000010;
 // DOM需要更新
-export const Update = /*    */ 0b0000000000000000000000000000100;
+export const Update = /*                   */ 0b00000000000100;
+// DOM需要插入到页面中并更新
+export const PlacementAndUpdate = /*       */ 0b00000000000110;
 // DOM需要删除
-export const ChildDeletion = /* */ 0b0000000000000000000000000010000;
+export const Deletion = /*                 */ 0b00000000001000;
 ```
 
-> 通过二进制表示`flags`，可以方便的使用位操作为`fiber.flags`赋值多个`flag`。
+> 通过二进制表示`effectTag`，可以方便的使用位操作为`fiber.effectTag`赋值多个`effect`。
 
 那么，如果要通知`Renderer`将`Fiber节点`对应的`DOM节点`插入页面中，需要满足两个条件：
 
 1. `fiber.stateNode`存在，即`Fiber节点`中保存了对应的`DOM节点`
 
-2. `(fiber.flags & Placement) !== 0`，即`Fiber节点`存在`Placement flag`
+2. `(fiber.effectTag & Placement) !== 0`，即`Fiber节点`存在`Placement effectTag`
 
-我们知道，`mount`时，`fiber.stateNode === null`，且在`reconcileChildren`中调用的`mountChildFibers`通常不会为`Fiber节点`追踪插入相关的`flags`。那么首屏渲染如何完成呢？
+我们知道，`mount`时，`fiber.stateNode === null`，且在`reconcileChildren`中调用的`mountChildFibers`不会为`Fiber节点`赋值`effectTag`。那么首屏渲染如何完成呢？
 
 针对第一个问题，`fiber.stateNode`会在`completeWork`中创建，我们会在下一节介绍。
 
-第二个问题的答案十分巧妙：假设`mountChildFibers`也会为整棵新建子树追踪插入相关的`flags`，那么可以预见`mount`时整棵`Fiber树`所有节点都会有`Placement flag`。那么`commit阶段`在执行`DOM`操作时每个节点都会执行一次插入操作，这样大量的`DOM`操作是极低效的。
+第二个问题的答案十分巧妙：假设`mountChildFibers`也会赋值`effectTag`，那么可以预见`mount`时整棵`Fiber树`所有节点都会有`Placement effectTag`。那么`commit阶段`在执行`DOM`操作时每个节点都会执行一次插入操作，这样大量的`DOM`操作是极低效的。
 
-为了解决这个问题，初次渲染时，`HostRoot`由于存在`alternate`，会通过`reconcileChildFibers`创建顶层子`Fiber`，并为需要插入的顶层子树标记`Placement`。顶层子树内部的后续`mount`路径通常通过`mountChildFibers`创建，不会为每个后代都标记`Placement`。因此`commit阶段`可以围绕顶层插入点完成整棵`DOM树`的插入，避免逐个节点重复插入。
+为了解决这个问题，在`mount`时只有`rootFiber`会赋值`Placement effectTag`，在`commit阶段`只会执行一次插入操作。
 
 ::: details 根 Fiber 节点 Demo
 借用上一节的 Demo，第一个进入`beginWork`方法的`Fiber节点`就是`rootFiber`，他的`alternate`指向`current rootFiber`（即他存在`current`）。
 
 > 为什么`rootFiber`节点存在`current`（即`rootFiber.alternate`），我们在[双缓存机制一节 mount 时的第二步](./doubleBuffer.html)已经讲过
 
-由于存在`current`，`rootFiber`在`reconcileChildren`时会走`reconcileChildFibers`逻辑，所以它创建出的顶层子`Fiber`会被标记`Placement`。
+由于存在`current`，`rootFiber`在`reconcileChildren`时会走`reconcileChildFibers`逻辑。
 
-而之后通过`beginWork`创建的`Fiber节点`是不存在`current`的（即 `fiber.alternate === null`），会走`mountChildFibers`逻辑，不会为整棵新建子树的每个后代都追踪插入副作用。
+而之后通过`beginWork`创建的`Fiber节点`是不存在`current`的（即 `fiber.alternate === null`），会走`mountChildFibers`逻辑
 
 [关注公众号 魔术师卡颂](../me.html)，后台回复**531**获得在线 Demo 地址
 :::
