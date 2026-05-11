@@ -2,7 +2,7 @@
   "devDependencies": {
     "ali-oss": "^6.18.1",
     "markdown-it-mark": "^3.0.0",
-    "vuepress": "^1.5.0"
+    "vuepress": "^1.9.10"
   },
   "name": "just-react",
   "description": "React技术揭秘",

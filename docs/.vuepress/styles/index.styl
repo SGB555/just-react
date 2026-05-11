@@ -2,3 +2,258 @@ mark {
   display: none;
 }
 
+:root
+  --jr-bg #ffffff
+  --jr-surface #ffffff
+  --jr-soft-bg #f3f5f7
+  --jr-soft-bg-strong #eef1f4
+  --jr-text #2c3e50
+  --jr-muted #6b7280
+  --jr-border #eaecef
+  --jr-border-strong #dfe2e5
+  --jr-accent #3eaf7c
+  --jr-accent-contrast #2f8f65
+  --jr-code-bg #282c34
+  --jr-inline-code-bg rgba(27,31,35,0.05)
+  --jr-blockquote #999999
+  --jr-table-stripe #f6f8fa
+  --jr-tip-bg #f3f5f7
+  --jr-warning-bg rgba(255,229,100,.3)
+  --jr-warning-text #6b5900
+  --jr-danger-bg #ffe6e6
+  --jr-danger-text #7f0000
+
+html[data-theme='dark']
+  --jr-bg #111827
+  --jr-surface #172033
+  --jr-soft-bg #1f2937
+  --jr-soft-bg-strong #273449
+  --jr-text #e5e7eb
+  --jr-muted #c2cad8
+  --jr-sidebar-text #bac4d4
+  --jr-sidebar-muted #9aa6b8
+  --jr-sidebar-active #3eaf7c
+  --jr-border #314057
+  --jr-border-strong #43516a
+  --jr-accent #52d495
+  --jr-accent-contrast #89e6b8
+  --jr-code-bg #202a3f
+  --jr-inline-code-bg rgba(148,163,184,0.18)
+  --jr-blockquote #a8b0bf
+  --jr-table-stripe #1d273a
+  --jr-tip-bg #183629
+  --jr-warning-bg rgba(234,179,8,.16)
+  --jr-warning-text #f8df77
+  --jr-danger-bg rgba(248,113,113,.16)
+  --jr-danger-text #fca5a5
+
+html
+  color-scheme light
+
+html[data-theme='dark']
+  color-scheme dark
+
+html, body
+  background-color var(--jr-bg)
+
+body
+  color var(--jr-text)
+
+body, .navbar, .sidebar, .page, .links
+  transition background-color .2s ease, border-color .2s ease, color .2s ease
+
+.navbar
+  background-color var(--jr-surface)
+  border-bottom-color var(--jr-border)
+
+.sidebar
+  background-color var(--jr-surface)
+  border-right-color var(--jr-border)
+
+.sidebar-mask
+  background-color rgba(0, 0, 0, .45)
+
+a
+  color var(--jr-accent)
+
+p a code
+  color var(--jr-accent)
+
+kbd
+  color var(--jr-text)
+  background var(--jr-soft-bg)
+  border-color var(--jr-border-strong)
+  border-bottom-color var(--jr-border-strong)
+
+blockquote
+  color var(--jr-blockquote)
+  border-left-color var(--jr-border-strong)
+
+h2
+  border-bottom-color var(--jr-border)
+
+hr
+  border-top-color var(--jr-border)
+
+tr
+  border-top-color var(--jr-border-strong)
+  &:nth-child(2n)
+    background-color var(--jr-table-stripe)
+
+th, td
+  border-color var(--jr-border-strong)
+
+.theme-default-content:not(.custom)
+  p.demo
+    border-color var(--jr-border-strong)
+
+  code
+    color var(--jr-accent-contrast)
+    background-color var(--jr-inline-code-bg)
+
+  pre,
+  pre[class*='language-']
+    background-color var(--jr-code-bg)
+    code
+      color #fff
+      background-color transparent
+
+div[class*='language-']
+  background-color var(--jr-code-bg)
+  &.line-numbers-mode
+    &::after
+      background-color var(--jr-code-bg)
+      border-right-color rgba(255, 255, 255, .12)
+
+.site-name,
+.sidebar-heading,
+a.sidebar-link,
+.dropdown-wrapper .dropdown-title
+  color var(--jr-text)
+
+html[data-theme='dark']
+  .sidebar-heading,
+  a.sidebar-link
+    color var(--jr-sidebar-text)
+
+  a.sidebar-link
+    &:hover,
+    &.active
+      color var(--jr-sidebar-active)
+      border-left-color var(--jr-sidebar-active)
+
+  .sidebar-heading.clickable
+    &:hover,
+    &.active
+      color var(--jr-sidebar-active)
+      border-left-color var(--jr-sidebar-active)
+
+  .sidebar-group.is-sub-group > .sidebar-heading:not(.clickable)
+    color var(--jr-sidebar-muted)
+    opacity 1
+
+a.sidebar-link
+  &:hover,
+  &.active
+    color var(--jr-sidebar-active, var(--jr-accent))
+    border-left-color var(--jr-sidebar-active, var(--jr-accent))
+
+.sidebar-heading
+  &.clickable
+    &.active,
+    &:hover
+      color var(--jr-sidebar-active, var(--jr-accent))
+      border-left-color var(--jr-sidebar-active, var(--jr-accent))
+
+.nav-links
+  a
+    color inherit
+    &:hover,
+    &.router-link-active
+      color var(--jr-accent)
+
+@media (min-width: ($MQMobile + 1px))
+  .nav-links a
+    &:hover,
+    &.router-link-active
+      color var(--jr-text)
+  .nav-item > a:not(.external)
+    &:hover,
+    &.router-link-active
+      border-bottom-color var(--jr-accent)
+
+.dropdown-wrapper
+  .nav-dropdown
+    background-color var(--jr-surface)
+    border-color var(--jr-border)
+    border-bottom-color var(--jr-border-strong)
+    .dropdown-item
+      h4
+        border-top-color var(--jr-border)
+      a
+        &:hover,
+        &.router-link-active
+          color var(--jr-accent)
+        &.router-link-active::after
+          border-left-color var(--jr-accent)
+
+.search-box
+  input
+    color var(--jr-text)
+    border-color var(--jr-border-strong)
+    background-color var(--jr-surface)
+    &:focus
+      border-color var(--jr-accent)
+  .suggestions
+    background var(--jr-surface)
+    border-color var(--jr-border-strong)
+  .suggestion
+    a
+      color var(--jr-muted)
+    &.focused
+      background-color var(--jr-soft-bg)
+      a
+        color var(--jr-accent)
+
+.custom-block
+  &.tip
+    background-color var(--jr-tip-bg)
+    border-color var(--jr-accent)
+  &.warning
+    color var(--jr-warning-text)
+    background-color var(--jr-warning-bg)
+    .custom-block-title
+      color var(--jr-warning-text)
+    a
+      color var(--jr-text)
+  &.danger
+    color var(--jr-danger-text)
+    background-color var(--jr-danger-bg)
+    .custom-block-title
+      color var(--jr-danger-text)
+    a
+      color var(--jr-text)
+  &.details
+    background-color var(--jr-soft-bg)
+
+.icp-footer
+  color var(--jr-muted)
+  a
+    color var(--jr-muted)
+    &:hover
+      color var(--jr-accent)
+
+html[data-theme='dark']
+  img
+    filter brightness(.9)
+
+@media (min-width: ($MQMobile + 1px))
+  .sidebar
+    transition transform .2s ease
+
+  html.jr-sidebar-collapsed
+    .sidebar
+      transform translateX(-100%)
+
+    .page
+      padding-left 0
